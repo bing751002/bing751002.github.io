@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222"><meta name="generator" content="Hexo 6.3.0">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha256-HtsXJanqjKTc8vVQjO4YMhiqFoXkfBsjBWcX91T1jr8=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"example.com","root":"/","images":"/images","scheme":"Muse","darkmode":false,"version":"8.17.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="OpenTelemetry .Net Instrumentation前言本篇文章為研究如何在.net中使用OpenTelemetry進行Instrumentation，會探討Auto + manually 以及全 manually的內容 本文撰寫時的OTel版本為: 1.25 OpenTelemetry on .net在.net framework中，已提供logging，metrics以及act">
+<meta property="og:type" content="article">
+<meta property="og:title" content="OpenTelemetryManuallyInstrument">
+<meta property="og:url" content="http://example.com/2023/10/30/sre-openTelemetryManuallyInstrument/index.html">
+<meta property="og:site_name" content="Bing&#39;s Blog">
+<meta property="og:description" content="OpenTelemetry .Net Instrumentation前言本篇文章為研究如何在.net中使用OpenTelemetry進行Instrumentation，會探討Auto + manually 以及全 manually的內容 本文撰寫時的OTel版本為: 1.25 OpenTelemetry on .net在.net framework中，已提供logging，metrics以及act">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://example.com/images/opentemetryManually/OTelPackage.png">
+<meta property="og:image" content="http://example.com/images/opentemetryManually/discover.png">
+<meta property="og:image" content="http://example.com/images/opentemetryManually/APM.png">
+<meta property="og:image" content="http://example.com/images/opentemetryManually/APM2.png">
+<meta property="og:image" content="http://example.com/images/opentemetryManually/APM3.png">
+<meta property="og:image" content="http://example.com/images/opentemetryManually/meter.png">
+<meta property="og:image" content="http://example.com/images/opentemetryManually/nestActivity.png">
+<meta property="article:published_time" content="2023-10-30T07:23:25.000Z">
+<meta property="article:modified_time" content="2023-10-30T07:43:38.927Z">
+<meta property="article:author" content="Bing Su">
+<meta property="article:tag" content="OpenTelemetry C# .Net">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/images/opentemetryManually/OTelPackage.png">
+
+
+<link rel="canonical" href="http://example.com/2023/10/30/sre-openTelemetryManuallyInstrument/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"en","comments":true,"permalink":"http://example.com/2023/10/30/sre-openTelemetryManuallyInstrument/","path":"2023/10/30/sre-openTelemetryManuallyInstrument/","title":"OpenTelemetryManuallyInstrument"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>OpenTelemetryManuallyInstrument | Bing's Blog</title>
+  
+
+
+
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar" role="button">
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">Bing's Blog</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="Search" role="button">
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#OpenTelemetry-Net-Instrumentation"><span class="nav-number">1.</span> <span class="nav-text">OpenTelemetry .Net Instrumentation</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-number">2.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#OpenTelemetry-on-net"><span class="nav-number">3.</span> <span class="nav-text">OpenTelemetry on .net</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Register-Customer-Signals-to-Auto-Instrumentation"><span class="nav-number">3.1.</span> <span class="nav-text">Register Customer Signals to Auto Instrumentation</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E7%9A%84Trace-Instrumentation"><span class="nav-number">4.</span> <span class="nav-text">常用的Trace Instrumentation</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Nest-Activities"><span class="nav-number">4.1.</span> <span class="nav-text">Nest Activities</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Todo"><span class="nav-number">4.2.</span> <span class="nav-text">Todo</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#resource"><span class="nav-number">4.3.</span> <span class="nav-text">resource</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Bing Su</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">9</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">3</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/10/30/sre-openTelemetryManuallyInstrument/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Bing Su">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Bing's Blog">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="OpenTelemetryManuallyInstrument | Bing's Blog">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          OpenTelemetryManuallyInstrument
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
+      
+
+      <time title="Created: 2023-10-30 15:23:25 / Modified: 15:43:38" itemprop="dateCreated datePublished" datetime="2023-10-30T15:23:25+08:00">2023-10-30</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">In</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/SRE/" itemprop="url" rel="index"><span itemprop="name">SRE</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="OpenTelemetry-Net-Instrumentation"><a href="#OpenTelemetry-Net-Instrumentation" class="headerlink" title="OpenTelemetry .Net Instrumentation"></a>OpenTelemetry .Net Instrumentation</h1><h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>本篇文章為研究如何在.net中使用OpenTelemetry進行Instrumentation，會探討Auto + manually 以及全 manually的內容</p>
+<p>本文撰寫時的OTel版本為: <code>1.25</code></p>
+<h1 id="OpenTelemetry-on-net"><a href="#OpenTelemetry-on-net" class="headerlink" title="OpenTelemetry on .net"></a>OpenTelemetry on .net</h1><p>在.net framework中，已提供logging，metrics以及activity APIs 實作OTel的標準，代表OTel不用再額外提供APIs，只要使用原生的APIs即可。.Net OTel以下列的方式實作了OTel的標準</p>
+<ul>
+<li>Microsoft.Extensions.Logging.ILogger<TCategoryName> (Logging)</li>
+<li>System.Diagnostics.Metrics.Meter (Metrics)</li>
+<li>System.Diagnostics.ActivitySource and System.Diagnostics.Activity (Tracing)</li>
+</ul>
+<p><code>OpenTelemetry in .NET is implemented as a series of NuGet packages that form a couple of categories:</code></p>
+<ul>
+<li>Core API</li>
+<li>Instrumentation - these packages collect instrumentation from the runtime and common libraries.</li>
+<li>Exporters - these interface with APM systems such as Prometheus, Jaeger, and OTLP.</li>
+</ul>
+<p><img src="/../images/opentemetryManually/OTelPackage.png" alt="Alt text"></p>
+<h2 id="Register-Customer-Signals-to-Auto-Instrumentation"><a href="#Register-Customer-Signals-to-Auto-Instrumentation" class="headerlink" title="Register Customer Signals to Auto Instrumentation"></a>Register Customer Signals to Auto Instrumentation</h2><p>第一種方式為在使用Automatic的情況下塞入自定義的Instrumentation，這種方式可以在<code>僅修改少量原始碼</code>的情況下，將自定義的Instrumentation塞入到Auto Instrumentation中。</p>
+<p>接續先前<code>rollingDice</code>的範例，首先在專案中加入<code>System.Diagnostics.DiagnosticSource</code>的Nuget Package</p>
+<figure class="highlight csharp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&lt;PackageReference Include=<span class="string">&quot;System.Diagnostics.DiagnosticSource&quot;</span> Version=<span class="string">&quot;7.0.2&quot;</span> /&gt;</span><br></pre></td></tr></table></figure>
+
+<p>接著新增一個名為<code>source</code>的<code>ActivitySource</code>，使用的名稱為<code>Sample.DistributedTracing</code></p>
+<figure class="highlight csharp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ActivitySource source = <span class="keyword">new</span> ActivitySource(<span class="string">&quot;Sample.DistributedTracing&quot;</span>, <span class="string">&quot;1.1.0&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+<p>接著幫此Activity加入<code>key</code>為<code>foo</code>的tag，<code>value為bar1</code></p>
+<figure class="highlight csharp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">using</span> (<span class="keyword">var</span> activity = source.StartActivity(<span class="string">&quot;Main&quot;</span>))</span><br><span class="line">&#123;</span><br><span class="line">    activity?.SetTag(<span class="string">&quot;foo&quot;</span>, <span class="string">&quot;bar1&quot;</span>); <span class="comment">//加入此trace要使用的log</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>接著就是開始建置後使用ELK觀察結果，首先到左方的<code>menu</code>選擇<code>discover</code></p>
+<p><img src="/../images/opentemetryManually/discover.png" alt="Alt text"></p>
+<p>接著左方的filter選擇<code>APM</code></p>
+<p><img src="/../images/opentemetryManually/APM.png" alt="Alt text"></p>
+<p>接著在右方可看到剛剛傳送上來的<code>traces</code>，點選其中一個並查看其內容。<br><img src="/../images/opentemetryManually/APM2.png" alt="Alt text"></p>
+<p>可以看到剛剛設的tag已經被傳送上來了。<br><img src="/../images/opentemetryManually/APM3.png" alt="Alt text"></p>
+<p>以上就成功埋入相關的tag到automatic instrumentation中了。</p>
+<p>接著為嘗試加入<code>metrics</code></p>
+<p>首先一樣在專案中加入<code>System.Diagnostics.DiagnosticSource</code>的Nuget Package</p>
+<p>接著在code裡加入以下的程式碼</p>
+<figure class="highlight csharp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> meter = <span class="keyword">new</span> Meter(<span class="string">&quot;Sample.Service&quot;</span>, <span class="string">&quot;1.0&quot;</span>);</span><br><span class="line"><span class="keyword">var</span> successCounter = meter.CreateCounter&lt;<span class="built_in">long</span>&gt;(<span class="string">&quot;srv.successes.bing&quot;</span>, description: <span class="string">&quot;Number of successful responses&quot;</span>);</span><br><span class="line">successCounter.Add(<span class="number">1</span>, <span class="keyword">new</span> KeyValuePair&lt;<span class="built_in">string</span>, <span class="built_in">object</span>?&gt;(<span class="string">&quot;tagName&quot;</span>, <span class="string">&quot;tagValue&quot;</span>));</span><br></pre></td></tr></table></figure>
+<p>命名一個名為<code>Sample.Service</code>的<code>Meter</code>，並且建立一個名為<code>srv.successes.bing</code>的<code>counter</code>，並且加入一個<code>tag</code>為<code>tagName</code>，<code>value為tagValue</code>的<code>counter</code>。</p>
+<p>接著就是開始建置後使用ELK觀察結果，首先一樣到左方的<code>menu</code>選擇<code>discover</code>，並且左方的filter選擇<code>APM</code><br>接著在右方的filter輸入<code>data_stream.type:&quot;metrics&quot; </code>，可看到下方出現相關的record，點選其中一條即可看到剛剛傳送上來的<code>srv.successes.bing</code>，並且可以看到剛剛設的tag已經被傳送上來了。</p>
+<p><img src="/../images/opentemetryManually/meter.png" alt="Alt text"></p>
+<p><code>ps. metrics預設為每分鐘一筆，所以要等一分鐘才會出現。traces則是每個operation的當下產生並送出。</code></p>
+<h1 id="常用的Trace-Instrumentation"><a href="#常用的Trace-Instrumentation" class="headerlink" title="常用的Trace Instrumentation"></a>常用的Trace Instrumentation</h1><h2 id="Nest-Activities"><a href="#Nest-Activities" class="headerlink" title="Nest Activities"></a>Nest Activities</h2><p>指的是多個Activities並且有父子(Parent-Child)關係，這種情況下，會有一個<code>root activity</code>，並且會有一個<code>parent activity</code>，<code>parent activity</code>會有一個或多個<code>child activity</code>，<code>child activity</code>也可以有<code>child activity</code>，如此一來就會形成一個<code>activity tree</code>。</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;_index&quot;</span><span class="punctuation">:</span> <span class="string">&quot;.ds-traces-apm-default-2023.10.06-000001&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;_id&quot;</span><span class="punctuation">:</span> <span class="string">&quot;NSAAJ4sBh0qJozGPC6sB&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;_version&quot;</span><span class="punctuation">:</span> <span class="number">1</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;_score&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">null</span></span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;fields&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;span.name&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span></span><br><span class="line">      <span class="string">&quot;ChildActivity&quot;</span></span><br><span class="line">    <span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;service.language.name&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span></span><br><span class="line">      <span class="string">&quot;dotnet&quot;</span></span><br><span class="line">    <span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;labels.telemetry_auto_version&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span></span><br><span class="line">      <span class="string">&quot;1.0.2&quot;</span></span><br><span class="line">    <span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;trace.id&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span></span><br><span class="line">      <span class="string">&quot;627ca227ecc96876d51575f50c8a5f39&quot;</span></span><br><span class="line">    <span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;span.duration.us&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span></span><br><span class="line">      <span class="number">1</span></span><br><span class="line">    <span class="punctuation">]</span><span class="punctuation">,</span><span class="comment">//下略</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;_index&quot;</span><span class="punctuation">:</span> <span class="string">&quot;.ds-traces-apm-default-2023.10.06-000001&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;_id&quot;</span><span class="punctuation">:</span> <span class="string">&quot;NiAAJ4sBh0qJozGPC6sB&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;_version&quot;</span><span class="punctuation">:</span> <span class="number">1</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;_score&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">null</span></span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;fields&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;span.name&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span></span><br><span class="line">      <span class="string">&quot;ParentActivity&quot;</span></span><br><span class="line">    <span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;service.language.name&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span></span><br><span class="line">      <span class="string">&quot;dotnet&quot;</span></span><br><span class="line">    <span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;labels.telemetry_auto_version&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span></span><br><span class="line">      <span class="string">&quot;1.0.2&quot;</span></span><br><span class="line">    <span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;trace.id&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span></span><br><span class="line">      <span class="string">&quot;627ca227ecc96876d51575f50c8a5f39&quot;</span></span><br><span class="line">    <span class="punctuation">]</span><span class="punctuation">,</span><span class="comment">//下略</span></span><br><span class="line">  <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;sort&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span></span><br><span class="line">    <span class="number">1697166392771</span></span><br><span class="line">  <span class="punctuation">]</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p><img src="/../images/opentemetryManually/nestActivity.png" alt="Alt text"></p>
+<h2 id="Todo"><a href="#Todo" class="headerlink" title="Todo"></a>Todo</h2><ol>
+<li>manually instrumentation # D</li>
+<li>manually register to Auto # D</li>
+<li>HTTP</li>
+<li>SQL</li>
+<li>library instrumentation<br><a target="_blank" rel="noopener" href="https://opentelemetry.io/ecosystem/registry/?language=dotnet&component=instrumentation">lib list</a></li>
+<li>metrics </li>
+<li>trace</li>
+<li>event&#x2F;span&#x2F;link</li>
+<li>filter</li>
+<li>sampling</li>
+<li>processor</li>
+</ol>
+<h2 id="resource"><a href="#resource" class="headerlink" title="resource"></a>resource</h2><p><a href="%5B%E6%B7%BA%E8%AB%87OpenTelemetry%5D(https://ithelp.ithome.com.tw/m/articles/10287771)">淺談OpenTelemetry</a></p>
+<p><a target="_blank" rel="noopener" href="https://learn.microsoft.com/zh-tw/dotnet/core/diagnostics/observability-with-otel">Microsoft learning</a></p>
+<p><a target="_blank" rel="noopener" href="https://code-maze.com/opentelemetry-in-dotnet/">https://code-maze.com/opentelemetry-in-dotnet/</a></p>
+<p><a target="_blank" rel="noopener" href="https://training.onedoggo.com/tech-sharing/uncle-joe-teach-es-elastc-observability">https://training.onedoggo.com/tech-sharing/uncle-joe-teach-es-elastc-observability</a></p>
+<p><a target="_blank" rel="noopener" href="https://opentelemetry.io/docs/specs/otel/metrics/data-model/#exemplars">https://opentelemetry.io/docs/specs/otel/metrics/data-model/#exemplars</a></p>
+<p><a target="_blank" rel="noopener" href="https://marcus116.blogspot.com/2022/01/opentelemetry-in-asp-net.html.html">https://marcus116.blogspot.com/2022/01/opentelemetry-in-asp-net.html.html</a></p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/OpenTelemetry-C-Net/" rel="tag"># OpenTelemetry C# .Net</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2023/10/30/trade-20231030/" rel="prev" title="trade-20201030">
+                  <i class="fa fa-chevron-left"></i> trade-20201030
+                </a>
+            </div>
+            <div class="post-nav-item">
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2023</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">Bing Su</span>
+  </div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/muse/" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="Back to top">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/schemes/muse.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>
